@@ -76,11 +76,14 @@ RUN git clone https://github.com/trabucayre/openFPGALoader.git openFPGALoader &&
     cmake --build build -j"${NPROC}" && \
     cmake --install build
 
+# The pinned SiTCP utility revision declares a C++11 baseline in its Makefile,
+# but currently uses language/library behavior that requires C++17. Keep the
+# dependency build reproducible here while retaining generic x86-64 CPU flags.
 RUN git clone https://github.com/nobukoba/sitcp-sitcpxg-mpc-mpcx-ip-utility-first-trial.git \
       sitcp-sitcpxg-mpc-mpcx-ip-utility-first-trial && \
     cd sitcp-sitcpxg-mpc-mpcx-ip-utility-first-trial && \
     git checkout "${SITCP_IP_UTILITY_REF}" && \
-    make -j"${NPROC}" CXXFLAGS="-O2 -std=c++11 -march=x86-64 -mtune=generic" && \
+    make -j"${NPROC}" CXXFLAGS="-O2 -std=c++17 -Wall -Wextra -Wpedantic -march=x86-64 -mtune=generic" && \
     make PREFIX=/opt/spadi install
 
 RUN printf '%s\n' '/opt/spadi/lib' '/opt/spadi/lib64' > /etc/ld.so.conf.d/spadi.conf && ldconfig
