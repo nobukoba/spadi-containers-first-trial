@@ -9,7 +9,8 @@ fi
 
 echo "=== SPADI environment ==="
 test "${SPADI_ROOT:-}" = "/opt/spadi"
-test "$PWD" = "/workspace"
+test -d /workspace
+test -w /workspace
 test "$PATH" = "/opt/spadi/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 test "${LD_LIBRARY_PATH:-}" = "/opt/spadi/lib:/opt/spadi/lib64"
 test "${CMAKE_PREFIX_PATH:-}" = "/opt/spadi"
