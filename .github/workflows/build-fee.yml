@@ -146,6 +146,12 @@ jobs:
       - name: Smoke test SIF with clean environment
         shell: bash
         run: |
+          export LD_LIBRARY_PATH=/tmp/spadi-host-sentinel/lib
+          export CMAKE_PREFIX_PATH=/tmp/spadi-host-sentinel/cmake
+          export PKG_CONFIG_PATH=/tmp/spadi-host-sentinel/pkgconfig
+          export ROOTSYS=/tmp/spadi-host-sentinel/root
+          export PYTHONPATH=/tmp/spadi-host-sentinel/python
+
           apptainer exec --cleanenv \
             "${{ steps.names.outputs.sif }}" \
             /opt/spadi/scripts/smoke-test-fee.sh "${{ matrix.kind }}"
