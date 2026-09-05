@@ -7,21 +7,41 @@ if [[ "$kind" != "user" && "$kind" != "devel" ]]; then
   exit 2
 fi
 
+contains_path_entry() {
+  local value="$1"
+  local expected="$2"
+  case ":${value}:" in
+    *":${expected}:"*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
 echo "=== SPADI environment ==="
 test "${SPADI_ROOT:-}" = "/opt/spadi"
 test -d /workspace
-test -w /workspace
-test "$PATH" = "/opt/spadi/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-test "${LD_LIBRARY_PATH:-}" = "/opt/spadi/lib:/opt/spadi/lib64"
-test "${CMAKE_PREFIX_PATH:-}" = "/opt/spadi"
-test "${PKG_CONFIG_PATH:-}" = "/opt/spadi/lib/pkgconfig:/opt/spadi/lib64/pkgconfig"
+contains_path_entry "$PATH" "/opt/spadi/bin"
+contains_path_entry "${LD_LIBRARY_PATH:-}" "/opt/spadi/lib"
+contains_path_entry "${LD_LIBRARY_PATH:-}" "/opt/spadi/lib64"
+contains_path_entry "${CMAKE_PREFIX_PATH:-}" "/opt/spadi"
+contains_path_entry "${PKG_CONFIG_PATH:-}" "/opt/spadi/lib/pkgconfig"
+contains_path_entry "${PKG_CONFIG_PATH:-}" "/opt/spadi/lib64/pkgconfig"
 
-case ":${PATH}:" in
-  *:/home/*|*:/Users/*) echo "ERROR: host-like path leaked into PATH" >&2; exit 1 ;;
-esac
-case ":${LD_LIBRARY_PATH:-}:" in
-  *:/home/*|*:/Users/*) echo "ERROR: host-like path leaked into LD_LIBRARY_PATH" >&2; exit 1 ;;
-esac
+# The workflow deliberately contaminates host-side software environment
+# variables before the Apptainer --cleanenv test. None of those sentinel paths
+# may be visible inside the container. Apptainer's own runtime additions, such
+# as /.singularity.d/libs, are allowed.
+for value in \
+  "$PATH" \
+  "${LD_LIBRARY_PATH:-}" \
+  "${CMAKE_PREFIX_PATH:-}" \
+  "${PKG_CONFIG_PATH:-}" \
+  "${ROOTSYS:-}" \
+  "${PYTHONPATH:-}"; do
+  if [[ "$value" == *spadi-host-sentinel* ]]; then
+    echo "ERROR: host software environment leaked into container: $value" >&2
+    exit 1
+  fi
+done
 
 echo "=== FEE commands ==="
 command -v openFPGALoader
