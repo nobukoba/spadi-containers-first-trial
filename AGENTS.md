@@ -2,6 +2,26 @@
 
 This repository provides unified SPADI container images. Keep the implementation practical, reproducible, and easy for humans to understand and maintain.
 
+## Working method and knowledge capture
+
+Treat `AGENTS.md` as the persistent engineering knowledge base for this repository, not only as a static style guide.
+
+Before making a design decision or answering a question about repository policy, inspect the current repository state and this `AGENTS.md` rather than relying on memory or assumptions when the answer can be verified directly.
+
+Whenever a build, CI, Docker, Apptainer, dependency, runtime, or hardware-related error is investigated and the investigation reveals a reusable rule, constraint, compatibility issue, failure mode, or non-obvious fix, update `AGENTS.md` in the same development cycle. Record the reason for the rule, not only the final workaround, so that future AI sessions and developers do not repeat the same failure.
+
+In particular, after fixing an error:
+
+1. identify what was actually wrong from the relevant source, configuration, or logs;
+2. make the smallest maintainable implementation fix;
+3. add the reusable lesson to `AGENTS.md` when it can prevent recurrence;
+4. keep validation or smoke tests that detect the failure automatically when practical;
+5. verify the repository state after the change instead of assuming that the intended edit or CI result exists.
+
+Do not add transient one-off log details to `AGENTS.md`; capture the general engineering knowledge learned from them.
+
+Explicit new corrections from Nobuyuki Kobayashi should also be incorporated into `AGENTS.md` when they establish a reusable repository rule.
+
 ## Paths
 
 All SPADI-related software uses the single installation prefix `/opt/spadi`.
@@ -18,6 +38,8 @@ All SPADI-related software uses the single installation prefix `/opt/spadi`.
 Do not use `/work`.
 
 ROOT and ARTEMIS sources also belong below `/opt/spadi/src`. Prefer installing ROOT, ARTEMIS, NestDAQ, FEE software, and their dependencies directly into the common `/opt/spadi` prefix when the software supports it.
+
+For ROOT, use `gnuinstall=OFF`. `/opt/spadi` is a self-contained SPADI software prefix rather than a system `/usr`-style installation. ROOT should therefore use its native prefix layout so that its `bin`, `lib`, and `include` directories integrate directly with the common `/opt/spadi` environment. Do not change ROOT to `gnuinstall=ON` unless the overall SPADI installation layout is intentionally redesigned.
 
 User images should not normally contain `/opt/spadi/src`. Development images retain source trees.
 
