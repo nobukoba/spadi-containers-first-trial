@@ -57,13 +57,14 @@ fi
 
 if [[ "$kind" == "user" ]]; then
   echo "=== User image policy ==="
-  ! command -v gcc
-  ! command -v g++
+  # ROOT/Cling built with the system GCC toolchain needs a C++ compiler driver,
+  # the standard C++ headers, and ROOT.modulemap even in a runtime image.
+  command -v c++
+  test -r /opt/spadi/include/ROOT.modulemap
   ! command -v cmake
   ! command -v make
   ! command -v git
   test ! -d /opt/spadi/src
-  test ! -d /opt/spadi/include
 else
   echo "=== Development image policy ==="
   command -v gcc
