@@ -20,6 +20,8 @@ In particular, after fixing an error:
 
 Do not add transient one-off log details to `AGENTS.md`; capture the general engineering knowledge learned from them.
 
+When transferring dependency build recipes from a reference repository, verify exact upstream repository URLs, tags, and versions against the working reference instead of retyping them from memory. A one-character owner/repository typo can waste an entire long container build before the dependency-clone step is reached. In particular, redis-plus-plus is hosted at `https://github.com/sewenew/redis-plus-plus.git`.
+
 Explicit new corrections from Nobuyuki Kobayashi should also be incorporated into `AGENTS.md` when they establish a reusable repository rule.
 
 ## Paths
