@@ -7,6 +7,14 @@ if [[ "$kind" != "user" && "$kind" != "devel" ]]; then
   exit 2
 fi
 
+assert_command_absent() {
+  local cmd="$1"
+  if command -v "$cmd" >/dev/null 2>&1; then
+    echo "ERROR: unexpected command in runtime image: $cmd ($(command -v "$cmd"))" >&2
+    return 1
+  fi
+}
+
 echo "=== SPADI / ROOT / ARTEMIS environment ==="
 test "${SPADI_ROOT:-}" = "/opt/spadi"
 test "${ROOTSYS:-}" = "/opt/spadi"
@@ -24,13 +32,13 @@ command -v root
 root -b -q -e 'gSystem->Exit(0);'
 command -v artemis
 
-# The executable may print help and return a non-zero code depending on the
-# upstream version. The important smoke check is that it starts and resolves
-# all required shared libraries.
 artemis --help >/tmp/artemis-help.txt 2>&1 || true
 
 for exe in "$(command -v root)" "$(command -v artemis)"; do
-  ldd "$exe" | (! grep -q 'not found')
+  if ldd "$exe" | grep -q 'not found'; then
+    echo "ERROR: unresolved shared library for $exe" >&2
+    exit 1
+  fi
 done
 
 find /opt/spadi -path '*/cmake/artemis/artemis-config.cmake' -print -quit | grep -q .
@@ -38,12 +46,12 @@ find /opt/spadi -path '*/cmake/artemis/artemis-config.cmake' -print -quit | grep
 if [[ "$kind" == "user" ]]; then
   echo "=== User image policy ==="
   # ROOT/Cling built with the system GCC toolchain needs a C++ compiler driver,
-  # the standard C++ headers, and ROOT.modulemap even in a runtime image.
+  # matching standard C++ headers, and ROOT.modulemap at runtime. On AlmaLinux,
+  # gcc-c++ may pull make in as a package dependency, so make is not forbidden.
   command -v c++
   test -r /opt/spadi/include/ROOT.modulemap
-  ! command -v cmake
-  ! command -v make
-  ! command -v git
+  assert_command_absent cmake
+  assert_command_absent git
   test ! -d /opt/spadi/src
 else
   echo "=== Development image policy ==="
