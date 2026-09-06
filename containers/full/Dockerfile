@@ -78,7 +78,9 @@ WORKDIR /workspace
 CMD ["/bin/bash"]
 
 FROM devel-full AS full-runtime-files
-RUN rm -rf /opt/spadi/src && rm -rf /opt/spadi/include
+# ROOT/Cling needs the installed headers, including ROOT.modulemap, at runtime.
+# Remove source trees from the user image, but keep /opt/spadi/include.
+RUN rm -rf /opt/spadi/src
 
 FROM ${DAQ_USER_IMAGE} AS user-full
 
@@ -96,13 +98,14 @@ ENV PKG_CONFIG_PATH=/opt/spadi/lib/pkgconfig:/opt/spadi/lib64/pkgconfig
 RUN dnf -y install dnf-plugins-core && \
     dnf config-manager --set-enabled crb && \
     dnf -y install \
+      gcc-c++ \
       libX11 libXext libXft libXpm libXrender \
       libjpeg-turbo libpng freetype giflib \
       mesa-libGL mesa-libGLU openmpi && \
     dnf clean all && rm -rf /var/cache/dnf
 
 # Copy the fully merged/rebuilt prefix from the development stage. This keeps
-# user-full functionally identical while excluding source and compiler files.
+# user-full functionally identical while excluding source and unrelated build files.
 COPY --from=full-runtime-files /opt/spadi/ /opt/spadi/
 
 RUN mkdir -p /workspace && chmod 1777 /workspace && \
