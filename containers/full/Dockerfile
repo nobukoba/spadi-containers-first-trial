@@ -3,11 +3,8 @@
 ARG DAQ_DEVEL_IMAGE=ghcr.io/nobukoba/spadi-containers-first-trial/spadi-devel-daq:latest
 ARG DAQ_USER_IMAGE=ghcr.io/nobukoba/spadi-containers-first-trial/spadi-user-daq:latest
 ARG ARTEMIS_DEVEL_IMAGE=ghcr.io/nobukoba/spadi-containers-first-trial/spadi-devel-artemis:latest
-ARG ARTEMIS_USER_IMAGE=ghcr.io/nobukoba/spadi-containers-first-trial/spadi-user-artemis:latest
 
 FROM ${ARTEMIS_DEVEL_IMAGE} AS artemis-devel-files
-FROM ${ARTEMIS_USER_IMAGE} AS artemis-user-files
-
 FROM ${DAQ_DEVEL_IMAGE} AS devel-full
 
 ARG NPROC=4
