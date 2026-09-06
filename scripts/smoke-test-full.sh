@@ -7,6 +7,14 @@ if [[ "$kind" != "user" && "$kind" != "devel" ]]; then
   exit 2
 fi
 
+assert_command_absent() {
+  local cmd="$1"
+  if command -v "$cmd" >/dev/null 2>&1; then
+    echo "ERROR: unexpected command in runtime image: $cmd ($(command -v "$cmd"))" >&2
+    return 1
+  fi
+}
+
 echo "=== Unified environment ==="
 test "${SPADI_ROOT:-}" = "/opt/spadi"
 test "${ROOTSYS:-}" = "/opt/spadi"
@@ -38,32 +46,29 @@ test -r /opt/spadi/bin/thisroot.sh
 test -r /opt/spadi/bin/thisartemis.sh
 artemis --help >/tmp/artemis-help.txt 2>&1 || true
 
-# Representative executables from every stack must resolve their runtime libs.
 for exe in \
   "$(command -v openFPGALoader)" \
   "$(command -v daq-webctl)" \
   "$(command -v TimeFrameBuilder)" \
   "$(command -v root)" \
   "$(command -v artemis)"; do
-  ldd "$exe" | (! grep -q 'not found')
+  if ldd "$exe" | grep -q 'not found'; then
+    echo "ERROR: unresolved shared library for $exe" >&2
+    exit 1
+  fi
 done
 
-if command -v TriggerView >/dev/null 2>&1; then
-  echo "TriggerView present."
-else
+command -v TriggerView >/dev/null 2>&1 || {
   echo "ERROR: ROOT-dependent TriggerView was not installed in FULL image" >&2
   exit 1
-fi
+}
 
 if [[ "$kind" == "user" ]]; then
   echo "=== User image policy ==="
-  # ROOT/Cling built with the system GCC toolchain needs a C++ compiler driver,
-  # the standard C++ headers, and ROOT.modulemap even in a runtime image.
   command -v c++
   test -r /opt/spadi/include/ROOT.modulemap
-  ! command -v cmake
-  ! command -v make
-  ! command -v git
+  assert_command_absent cmake
+  assert_command_absent git
   test ! -d /opt/spadi/src
 else
   echo "=== Development image policy ==="
