@@ -46,8 +46,9 @@ RUN mkdir -p \
     chmod 1777 /workspace
 
 # ROOT, ARTEMIS, and their locally built dependencies all install directly
-# into /opt/spadi. This intentionally tests the single-prefix design rather
-# than preserving the older /opt/root + /opt/artemis split.
+# into /opt/spadi. ROOT's gnuinstall layout would place scripts under
+# /opt/spadi/etc/root, so keep ROOT's native layout while sharing the same
+# top-level prefix with ARTEMIS and the other SPADI software.
 RUN cd /opt/spadi/src && \
     git clone --depth 1 --branch ${ROOT_VERSION} https://github.com/root-project/root.git && \
     cmake -S root -B root-build \
@@ -55,7 +56,7 @@ RUN cd /opt/spadi/src && \
       -DCMAKE_INSTALL_PREFIX=/opt/spadi \
       -DCMAKE_C_FLAGS_RELEASE="-O2 -DNDEBUG -march=x86-64 -mtune=generic -mno-avx -mno-avx2" \
       -DCMAKE_CXX_FLAGS_RELEASE="-O2 -DNDEBUG -march=x86-64 -mtune=generic -mno-avx -mno-avx2" \
-      -Dgnuinstall=ON -Dtesting=OFF -Dtmva=ON -Droofit=OFF -Dpyroot=OFF \
+      -Dgnuinstall=OFF -Dtesting=OFF -Dtmva=ON -Droofit=OFF -Dpyroot=OFF \
       -Dwebgui=OFF -Dxrootd=OFF -Ddavix=OFF -Dmysql=OFF -Dpgsql=OFF \
       -Dodbc=OFF -Dsqlite=ON -Dssl=ON -Dx11=ON -Dopengl=ON && \
     cmake --build root-build -j${NPROC} && \
@@ -92,7 +93,7 @@ RUN cd /opt/spadi/src && \
     test -e /opt/spadi/lib/libhiredis.so
 
 RUN cd /opt/spadi/src && \
-    git clone --depth 1 --branch ${REDIS_PLUS_PLUS_VERSION} https://github.com/sewenew/redis-plus-plus.git && \
+    git clone --depth 1 --branch ${REDIS_PLUS_PLUS_VERSION} https://github.com/sewen/redis-plus-plus.git && \
     sed -i '/#include "cxx_utils.h"/i #include <cstdint>' redis-plus-plus/src/sw/redis++/utils.h && \
     cmake -S redis-plus-plus -B redis-plus-plus/build \
       -DCMAKE_BUILD_TYPE=Release \
