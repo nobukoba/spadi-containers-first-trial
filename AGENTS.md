@@ -45,7 +45,7 @@ For ROOT, use `gnuinstall=OFF`. `/opt/spadi` is a self-contained SPADI software 
 
 User images should not normally contain `/opt/spadi/src`. Development images retain source trees.
 
-ROOT/Cling is an exception to the general preference to omit compiler-related runtime content. When ROOT is built against the system GCC toolchain, Cling invokes a `c++` compiler driver to discover the standard-library include paths and also requires installed ROOT headers such as `/opt/spadi/include/ROOT.modulemap` at runtime. ARTEMIS and FULL user images that include this ROOT build must therefore retain `/opt/spadi/include` and provide `gcc-c++` (or an equivalent `c++` driver plus matching standard C++ headers). They should still omit `/opt/spadi/src`, CMake, make, Git, and unrelated development tools unless another runtime component genuinely requires them. Smoke tests must launch ROOT and verify both `c++` and `ROOT.modulemap` so this failure is caught before SIF publication.
+ROOT/Cling is an exception to the general preference to omit compiler-related runtime content. When ROOT is built against the system GCC toolchain, Cling invokes a `c++` compiler driver to discover the standard-library include paths and also requires installed ROOT headers such as `/opt/spadi/include/ROOT.modulemap` at runtime. ARTEMIS and FULL user images that include this ROOT build must therefore retain `/opt/spadi/include` and provide `gcc-c++` (or an equivalent `c++` driver plus matching standard C++ headers). They should still omit `/opt/spadi/src`, CMake, Git, and unrelated development tools unless another runtime component genuinely requires them. On AlmaLinux 9, installing `gcc-c++` may also install `make` as a package dependency; do not treat the mere presence of `make` as a runtime-image failure when it is pulled in this way. Smoke tests must launch ROOT and verify both `c++` and `ROOT.modulemap` so this failure is caught before SIF publication.
 
 ## Environment isolation
 
@@ -53,7 +53,7 @@ Do not make the container runtime depend on software environment variables inher
 
 Define the SPADI runtime environment explicitly. Do not initialize `PATH`, `LD_LIBRARY_PATH`, `CMAKE_PREFIX_PATH`, `PKG_CONFIG_PATH`, ROOT, ARTEMIS, or NestDAQ environments by blindly appending host values.
 
-Apptainer runtime tests must use a clean environment (`--cleanenv`) and verify that the resulting container environment is sufficient by itself.
+Apptainer runtime tests must use a clean environment (`--cleanenv`) and verify that the resulting container environment is sufficient by itself. Do not assume Docker `ENV` values will always appear unchanged in an Apptainer `--cleanenv` invocation. For CI smoke tests, set host sentinel variables to detect leakage, then explicitly pass the intended SPADI runtime variables with Apptainer `--env`. This tests both host isolation and the actual required runtime environment instead of failing before the software itself is exercised.
 
 ## CPU compatibility
 
@@ -94,6 +94,8 @@ Write Dockerfiles, helper scripts, and workflows for human readability.
 - Put long shell procedures in readable scripts rather than embedding large shell programs in workflow YAML.
 - Comment non-obvious compatibility patches and explain why they exist.
 
+Canonical component Dockerfiles are the shared build definitions. FULL and DAQ CI must reuse `containers/fee/Dockerfile`, `containers/daq/Dockerfile`, and `containers/artemis/Dockerfile` rather than duplicating their installation recipes in workflow YAML or a second FULL-only implementation.
+
 ## Validation
 
 A successful Docker build is not sufficient validation.
@@ -124,11 +126,17 @@ Tests should verify at least:
 - devel images contain the expected source/build environment;
 - NestDAQ binaries do not accidentally contain AVX instructions introduced by `-march=native`.
 
+When asserting that a command must be absent, do not rely on a bare `! command -v ...` under `set -e`; commands used in an inverted conditional context are exempt from normal `errexit` behavior and can make an intended policy check ineffective. Use an explicit helper or `if command -v ...; then exit 1; fi` so the failure is unambiguous.
+
 Hardware-dependent tests (JTAG, Digilent HS3, SiTCP hardware, real DAQ networks) are separate from container-only smoke tests.
 
 ## GitHub Actions
 
 Keep workflows readable from top to bottom. Build, Docker test, SIF creation, SIF test, and publishing should be visibly separate operations.
+
+FEE, DAQ, ARTEMIS, and FULL workflows must be independently startable and must not require a sibling workflow to finish first. In particular, do not use a mutable sibling `:latest` image as the source of truth for a DAQ or FULL build. When DAQ or FULL needs prerequisite layers, build commit-local prerequisite images from the canonical component Dockerfiles and pass those immutable commit-specific tags as Docker build arguments. This deliberately trades additional CI compute for shorter wall-clock time, deterministic source consistency, and true top-level workflow parallelism.
+
+Inside FULL, the independent ROOT/ARTEMIS build should start in parallel with the FEE-to-DAQ chain. Only the intrinsic composition step waits for its own commit-local prerequisites; the standalone FEE, DAQ, ARTEMIS, and FULL workflows themselves should all be able to run concurrently.
 
 ARTEMIS images are expected to take substantially longer to build than FEE or DAQ images because the Docker build compiles ROOT and ARTEMIS from source. Do not classify an ARTEMIS Docker build as hung merely because it has remained in the `Build and push Docker image` step for a few hours. In the reference repository `nobukoba/container-artemis-first-trial`, a known successful GitHub Actions build (run `33737118485`, 2026-09-02) took about 2 hours 50 minutes for the job. Use this as a practical baseline: investigate a suspected hang using job timestamps, runner activity, logs, or an actual timeout/failure rather than elapsed time alone.
 
@@ -146,7 +154,7 @@ user-full
 devel-full
 ```
 
-Use `latest` and UTC timestamp tags in `YYYYMMDD-HHMMutc` format, following the existing Kobayashi container repositories.
+Use `latest` and UTC timestamp tags in `YYYYMMDD-HHMMutc` format, following the existing Kobayashi container repositories. Commit-local prerequisite tags used only inside CI are allowed and should be clearly prefixed (for example `ci-...`) so they cannot be confused with published user-facing releases.
 
 ## README
 
