@@ -43,14 +43,40 @@ jobs:
             *) exit 2 ;;
           esac
 
-  build-prerequisites:
+  build-artemis-prerequisite:
     runs-on: ubuntu-latest
     outputs:
-      fee_devel: ${{ steps.names.outputs.fee_devel }}
-      fee_user: ${{ steps.names.outputs.fee_user }}
+      artemis_devel: ${{ steps.names.outputs.artemis_devel }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: names
+        run: |
+          repo="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/${GITHUB_REPOSITORY#*/}"
+          echo "artemis_devel=${repo}/spadi-devel-artemis:ci-full-${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build commit-local ARTEMIS prerequisite
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: containers/artemis/Dockerfile
+          target: devel-artemis
+          platforms: linux/amd64
+          push: true
+          build-args: NPROC=4
+          tags: ${{ steps.names.outputs.artemis_devel }}
+          cache-from: type=gha,scope=devel-artemis
+          cache-to: type=gha,mode=max,scope=devel-artemis
+
+  build-daq-prerequisites:
+    runs-on: ubuntu-latest
+    outputs:
       daq_devel: ${{ steps.names.outputs.daq_devel }}
       daq_user: ${{ steps.names.outputs.daq_user }}
-      artemis_devel: ${{ steps.names.outputs.artemis_devel }}
     steps:
       - uses: actions/checkout@v4
       - id: names
@@ -61,55 +87,41 @@ jobs:
           echo "fee_user=${repo}/spadi-user-fee:${suffix}" >> "$GITHUB_OUTPUT"
           echo "daq_devel=${repo}/spadi-devel-daq:${suffix}" >> "$GITHUB_OUTPUT"
           echo "daq_user=${repo}/spadi-user-daq:${suffix}" >> "$GITHUB_OUTPUT"
-          echo "artemis_devel=${repo}/spadi-devel-artemis:${suffix}" >> "$GITHUB_OUTPUT"
       - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Build commit-local FEE, DAQ and ARTEMIS prerequisites
+      - name: Build commit-local FEE prerequisites in parallel
         run: |
           set -euo pipefail
-
-          # ARTEMIS has no FEE/DAQ dependency, so start the long ROOT/ARTEMIS
-          # build immediately while the FEE -> DAQ chain proceeds beside it.
-          docker buildx build --platform linux/amd64 --target devel-artemis --build-arg NPROC=4 \
-            --cache-from type=gha,scope=devel-artemis --cache-to type=gha,mode=max,scope=devel-artemis \
-            -t "${{ steps.names.outputs.artemis_devel }}" --push -f containers/artemis/Dockerfile . &
-          p_artemis=$!
-
           docker buildx build --platform linux/amd64 --target devel-fee --build-arg NPROC=4 \
             --cache-from type=gha,scope=devel-fee --cache-to type=gha,mode=max,scope=devel-fee \
-            -t "${{ steps.names.outputs.fee_devel }}" --push -f containers/fee/Dockerfile . &
-          p_fee_devel=$!
+            -t "${{ steps.names.outputs.fee_devel }}" --push -f containers/fee/Dockerfile . & p1=$!
           docker buildx build --platform linux/amd64 --target user-fee --build-arg NPROC=4 \
             --cache-from type=gha,scope=user-fee --cache-to type=gha,mode=max,scope=user-fee \
-            -t "${{ steps.names.outputs.fee_user }}" --push -f containers/fee/Dockerfile . &
-          p_fee_user=$!
-
-          wait "$p_fee_devel"
-          wait "$p_fee_user"
-
+            -t "${{ steps.names.outputs.fee_user }}" --push -f containers/fee/Dockerfile . & p2=$!
+          wait "$p1"
+          wait "$p2"
+      - name: Build commit-local DAQ prerequisites in parallel
+        run: |
+          set -euo pipefail
           docker buildx build --platform linux/amd64 --target devel-daq --build-arg NPROC=4 \
             --build-arg FEE_DEVEL_IMAGE="${{ steps.names.outputs.fee_devel }}" \
             --build-arg FEE_USER_IMAGE="${{ steps.names.outputs.fee_user }}" \
             --cache-from type=gha,scope=devel-daq --cache-to type=gha,mode=max,scope=devel-daq \
-            -t "${{ steps.names.outputs.daq_devel }}" --push -f containers/daq/Dockerfile . &
-          p_daq_devel=$!
+            -t "${{ steps.names.outputs.daq_devel }}" --push -f containers/daq/Dockerfile . & p1=$!
           docker buildx build --platform linux/amd64 --target user-daq --build-arg NPROC=4 \
             --build-arg FEE_DEVEL_IMAGE="${{ steps.names.outputs.fee_devel }}" \
             --build-arg FEE_USER_IMAGE="${{ steps.names.outputs.fee_user }}" \
             --cache-from type=gha,scope=user-daq --cache-to type=gha,mode=max,scope=user-daq \
-            -t "${{ steps.names.outputs.daq_user }}" --push -f containers/daq/Dockerfile . &
-          p_daq_user=$!
-
-          wait "$p_daq_devel"
-          wait "$p_daq_user"
-          wait "$p_artemis"
+            -t "${{ steps.names.outputs.daq_user }}" --push -f containers/daq/Dockerfile . & p2=$!
+          wait "$p1"
+          wait "$p2"
 
   build:
-    needs: [select-targets, build-prerequisites]
+    needs: [select-targets, build-artemis-prerequisite, build-daq-prerequisites]
     runs-on: ubuntu-latest
     strategy:
       max-parallel: 2
@@ -141,9 +153,9 @@ jobs:
           push: true
           build-args: |
             NPROC=4
-            DAQ_DEVEL_IMAGE=${{ needs.build-prerequisites.outputs.daq_devel }}
-            DAQ_USER_IMAGE=${{ needs.build-prerequisites.outputs.daq_user }}
-            ARTEMIS_DEVEL_IMAGE=${{ needs.build-prerequisites.outputs.artemis_devel }}
+            DAQ_DEVEL_IMAGE=${{ needs.build-daq-prerequisites.outputs.daq_devel }}
+            DAQ_USER_IMAGE=${{ needs.build-daq-prerequisites.outputs.daq_user }}
+            ARTEMIS_DEVEL_IMAGE=${{ needs.build-artemis-prerequisite.outputs.artemis_devel }}
           tags: |
             ${{ steps.names.outputs.image }}:${{ steps.tag.outputs.tag }}
             ${{ steps.names.outputs.image }}:latest
