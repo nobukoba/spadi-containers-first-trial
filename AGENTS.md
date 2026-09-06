@@ -128,6 +128,8 @@ Hardware-dependent tests (JTAG, Digilent HS3, SiTCP hardware, real DAQ networks)
 
 Keep workflows readable from top to bottom. Build, Docker test, SIF creation, SIF test, and publishing should be visibly separate operations.
 
+ARTEMIS images are expected to take substantially longer to build than FEE or DAQ images because the Docker build compiles ROOT and ARTEMIS from source. Do not classify an ARTEMIS Docker build as hung merely because it has remained in the `Build and push Docker image` step for a few hours. In the reference repository `nobukoba/container-artemis-first-trial`, a known successful GitHub Actions build (run `33737118485`, 2026-09-02) took about 2 hours 50 minutes for the job. Use this as a practical baseline: investigate a suspected hang using job timestamps, runner activity, logs, or an actual timeout/failure rather than elapsed time alone.
+
 Support individual manual targets as well as `all`:
 
 ```text
