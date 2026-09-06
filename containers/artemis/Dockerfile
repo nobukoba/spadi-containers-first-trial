@@ -93,7 +93,7 @@ RUN cd /opt/spadi/src && \
     test -e /opt/spadi/lib/libhiredis.so
 
 RUN cd /opt/spadi/src && \
-    git clone --depth 1 --branch ${REDIS_PLUS_PLUS_VERSION} https://github.com/sewen/redis-plus-plus.git && \
+    git clone --depth 1 --branch ${REDIS_PLUS_PLUS_VERSION} https://github.com/sewenew/redis-plus-plus.git && \
     sed -i '/#include "cxx_utils.h"/i #include <cstdint>' redis-plus-plus/src/sw/redis++/utils.h && \
     cmake -S redis-plus-plus -B redis-plus-plus/build \
       -DCMAKE_BUILD_TYPE=Release \
