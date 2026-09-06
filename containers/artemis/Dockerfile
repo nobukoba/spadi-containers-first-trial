@@ -136,7 +136,9 @@ ENV SPADI_IMAGE_KIND=devel
 CMD ["/bin/bash"]
 
 FROM artemis-build AS artemis-runtime-files
-RUN rm -rf /opt/spadi/src && rm -rf /opt/spadi/include
+# ROOT/Cling needs the installed headers, including ROOT.modulemap, at runtime.
+# Remove source trees from the user image, but keep /opt/spadi/include.
+RUN rm -rf /opt/spadi/src
 
 FROM quay.io/almalinuxorg/9-base:9 AS user-artemis
 
@@ -154,7 +156,7 @@ RUN dnf -y update && \
     dnf -y install dnf-plugins-core && \
     dnf config-manager --set-enabled crb && \
     dnf -y install \
-      which findutils procps-ng tmux ca-certificates \
+      which findutils procps-ng tmux ca-certificates gcc-c++ \
       openssl-libs zlib xz-libs bzip2-libs pcre2 \
       libX11 libXext libXft libXpm libXrender \
       libjpeg-turbo libpng freetype giflib \

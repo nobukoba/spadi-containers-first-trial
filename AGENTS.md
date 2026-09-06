@@ -45,6 +45,8 @@ For ROOT, use `gnuinstall=OFF`. `/opt/spadi` is a self-contained SPADI software 
 
 User images should not normally contain `/opt/spadi/src`. Development images retain source trees.
 
+ROOT/Cling is an exception to the general preference to omit compiler-related runtime content. When ROOT is built against the system GCC toolchain, Cling invokes a `c++` compiler driver to discover the standard-library include paths and also requires installed ROOT headers such as `/opt/spadi/include/ROOT.modulemap` at runtime. ARTEMIS and FULL user images that include this ROOT build must therefore retain `/opt/spadi/include` and provide `gcc-c++` (or an equivalent `c++` driver plus matching standard C++ headers). They should still omit `/opt/spadi/src`, CMake, make, Git, and unrelated development tools unless another runtime component genuinely requires them. Smoke tests must launch ROOT and verify both `c++` and `ROOT.modulemap` so this failure is caught before SIF publication.
+
 ## Environment isolation
 
 Do not make the container runtime depend on software environment variables inherited from the host.
