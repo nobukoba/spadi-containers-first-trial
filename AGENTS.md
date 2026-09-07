@@ -65,6 +65,8 @@ Never use `-march=native` for NestDAQ, nestdaq-user-impl, or other SPADI softwar
 
 Prefer `-march=x86-64 -mtune=generic`; use explicit non-AVX flags where necessary. NestDAQ and nestdaq-user-impl currently contain upstream Release flags using `-march=native`; these must be neutralized and the resulting binaries checked for unintended AVX instructions.
 
+Current `nestdaq-user-impl` may fail against the pinned FairMQ build because `TimeFrameBuilder.cxx` passes a `const fair::mq::Parts` through an API whose `operator[]` is not const-qualified, producing `passing 'const fair::mq::Parts' as 'this' argument discards qualifiers`. For the container build, intentionally add `-fpermissive` to the patched `nestdaq-user-impl` Release flags rather than carrying a local source-level const-signature modification. Keep this workaround scoped to `nestdaq-user-impl`; do not add `-fpermissive` globally to unrelated SPADI dependencies. Re-evaluate and remove it when upstream `nestdaq-user-impl` or FairMQ resolves the const mismatch.
+
 ## Images
 
 The supported image names are:
