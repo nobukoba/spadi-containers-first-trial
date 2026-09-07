@@ -224,7 +224,14 @@ jobs:
             )
           fi
 
+          # A SIF root filesystem is read-only. Bind a runner-owned scratch
+          # directory at /workspace so the smoke test validates the intended
+          # writable user workspace rather than the immutable image layer.
+          sif_workspace="${RUNNER_TEMP}/spadi-workspace-${{ matrix.target }}"
+          mkdir -p "$sif_workspace"
+
           apptainer exec --cleanenv "${env_args[@]}" \
+            --bind "${sif_workspace}:/workspace" \
             "${{ steps.names.outputs.sif }}" \
             "/opt/spadi/scripts/smoke-test-${{ matrix.family }}.sh" "${{ matrix.kind }}"
 
