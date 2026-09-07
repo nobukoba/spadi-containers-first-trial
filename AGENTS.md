@@ -20,6 +20,8 @@ In particular, after fixing an error:
 
 Do not add transient one-off log details to `AGENTS.md`; capture the general engineering knowledge learned from them.
 
+When investigating GitHub Actions failures, do not fetch, read, or process the complete workflow log by default. Large ROOT/ARTEMIS/FULL build logs can be very large, and reading the whole log can make an AI/tool session slow, stall, or fail before the useful error is reached. First inspect the workflow/job/step status, identify the most recent failed step, and retrieve only the latest relevant error output or a small tail/context around that failure. Expand to earlier or larger log sections only when the latest error does not contain enough information to diagnose the cause. Do not repeatedly re-read successful build output. For long-running jobs with no failure yet, inspect status, timestamps, and the latest available activity rather than downloading the full log.
+
 When transferring dependency build recipes from a reference repository, verify exact upstream repository URLs, tags, and versions against the working reference instead of retyping them from memory. A one-character owner/repository typo can waste an entire long container build before the dependency-clone step is reached. In particular, redis-plus-plus is hosted at `https://github.com/sewenew/redis-plus-plus.git`.
 
 Explicit new corrections from Nobuyuki Kobayashi should also be incorporated into `AGENTS.md` when they establish a reusable repository rule.
