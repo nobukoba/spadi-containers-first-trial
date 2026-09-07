@@ -81,52 +81,70 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          log_dir="${RUNNER_TEMP}/spadi-ci-logs"
+          mkdir -p "$log_dir"
+
+          run_logged() {
+            local name="$1"
+            shift
+            set +e
+            "$@" 2>&1 | tee "$log_dir/${name}.log"
+            local status=${PIPESTATUS[0]}
+            set -e
+            printf '%s\n' "$status" > "$log_dir/${name}.status"
+            return "$status"
+          }
 
           # Each final target owns its prerequisites. Nothing in this job waits
           # for another matrix target or another workflow to publish :latest.
           if [[ "${{ matrix.family }}" == "full" ]]; then
-            docker buildx build --platform linux/amd64 --target devel-artemis --build-arg NPROC=4 \
-              --cache-from type=gha,scope=devel-artemis \
-              --cache-to type=gha,mode=max,scope=${{ matrix.target }}-artemis-devel \
-              -t "${{ steps.names.outputs.artemis_devel }}" --push \
-              -f containers/artemis/Dockerfile . &
+            run_logged artemis-prerequisite \
+              docker buildx build --platform linux/amd64 --target devel-artemis --build-arg NPROC=4 \
+                --cache-from type=gha,scope=devel-artemis \
+                --cache-to type=gha,mode=max,scope=${{ matrix.target }}-artemis-devel \
+                -t "${{ steps.names.outputs.artemis_devel }}" --push \
+                -f containers/artemis/Dockerfile . &
             p_artemis=$!
           fi
 
-          docker buildx build --platform linux/amd64 --target devel-fee --build-arg NPROC=4 \
-            --cache-from type=gha,scope=devel-fee \
-            --cache-to type=gha,mode=max,scope=${{ matrix.target }}-fee-devel \
-            -t "${{ steps.names.outputs.fee_devel }}" --push \
-            -f containers/fee/Dockerfile . &
+          run_logged fee-devel-prerequisite \
+            docker buildx build --platform linux/amd64 --target devel-fee --build-arg NPROC=4 \
+              --cache-from type=gha,scope=devel-fee \
+              --cache-to type=gha,mode=max,scope=${{ matrix.target }}-fee-devel \
+              -t "${{ steps.names.outputs.fee_devel }}" --push \
+              -f containers/fee/Dockerfile . &
           p_fee_devel=$!
 
-          docker buildx build --platform linux/amd64 --target user-fee --build-arg NPROC=4 \
-            --cache-from type=gha,scope=user-fee \
-            --cache-to type=gha,mode=max,scope=${{ matrix.target }}-fee-user \
-            -t "${{ steps.names.outputs.fee_user }}" --push \
-            -f containers/fee/Dockerfile . &
+          run_logged fee-user-prerequisite \
+            docker buildx build --platform linux/amd64 --target user-fee --build-arg NPROC=4 \
+              --cache-from type=gha,scope=user-fee \
+              --cache-to type=gha,mode=max,scope=${{ matrix.target }}-fee-user \
+              -t "${{ steps.names.outputs.fee_user }}" --push \
+              -f containers/fee/Dockerfile . &
           p_fee_user=$!
 
           wait "$p_fee_devel"
           wait "$p_fee_user"
 
           if [[ "${{ matrix.family }}" == "full" ]]; then
-            docker buildx build --platform linux/amd64 --target devel-daq --build-arg NPROC=4 \
-              --build-arg FEE_DEVEL_IMAGE="${{ steps.names.outputs.fee_devel }}" \
-              --build-arg FEE_USER_IMAGE="${{ steps.names.outputs.fee_user }}" \
-              --cache-from type=gha,scope=devel-daq \
-              --cache-to type=gha,mode=max,scope=${{ matrix.target }}-daq-devel \
-              -t "${{ steps.names.outputs.daq_devel }}" --push \
-              -f containers/daq/Dockerfile . &
+            run_logged daq-devel-prerequisite \
+              docker buildx build --platform linux/amd64 --target devel-daq --build-arg NPROC=4 \
+                --build-arg FEE_DEVEL_IMAGE="${{ steps.names.outputs.fee_devel }}" \
+                --build-arg FEE_USER_IMAGE="${{ steps.names.outputs.fee_user }}" \
+                --cache-from type=gha,scope=devel-daq \
+                --cache-to type=gha,mode=max,scope=${{ matrix.target }}-daq-devel \
+                -t "${{ steps.names.outputs.daq_devel }}" --push \
+                -f containers/daq/Dockerfile . &
             p_daq_devel=$!
 
-            docker buildx build --platform linux/amd64 --target user-daq --build-arg NPROC=4 \
-              --build-arg FEE_DEVEL_IMAGE="${{ steps.names.outputs.fee_devel }}" \
-              --build-arg FEE_USER_IMAGE="${{ steps.names.outputs.fee_user }}" \
-              --cache-from type=gha,scope=user-daq \
-              --cache-to type=gha,mode=max,scope=${{ matrix.target }}-daq-user \
-              -t "${{ steps.names.outputs.daq_user }}" --push \
-              -f containers/daq/Dockerfile . &
+            run_logged daq-user-prerequisite \
+              docker buildx build --platform linux/amd64 --target user-daq --build-arg NPROC=4 \
+                --build-arg FEE_DEVEL_IMAGE="${{ steps.names.outputs.fee_devel }}" \
+                --build-arg FEE_USER_IMAGE="${{ steps.names.outputs.fee_user }}" \
+                --cache-from type=gha,scope=user-daq \
+                --cache-to type=gha,mode=max,scope=${{ matrix.target }}-daq-user \
+                -t "${{ steps.names.outputs.daq_user }}" --push \
+                -f containers/daq/Dockerfile . &
             p_daq_user=$!
 
             wait "$p_daq_devel"
@@ -138,6 +156,20 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          log_dir="${RUNNER_TEMP}/spadi-ci-logs"
+          mkdir -p "$log_dir"
+
+          run_logged() {
+            local name="$1"
+            shift
+            set +e
+            "$@" 2>&1 | tee "$log_dir/${name}.log"
+            local status=${PIPESTATUS[0]}
+            set -e
+            printf '%s\n' "$status" > "$log_dir/${name}.status"
+            return "$status"
+          }
+
           args=(
             --platform linux/amd64
             --target "${{ matrix.target }}"
@@ -151,19 +183,19 @@ jobs:
 
           case "${{ matrix.family }}" in
             fee)
-              docker buildx build "${args[@]}" -f containers/fee/Dockerfile .
+              run_logged final-docker-build docker buildx build "${args[@]}" -f containers/fee/Dockerfile .
               ;;
             daq)
-              docker buildx build "${args[@]}" \
+              run_logged final-docker-build docker buildx build "${args[@]}" \
                 --build-arg FEE_DEVEL_IMAGE="${{ steps.names.outputs.fee_devel }}" \
                 --build-arg FEE_USER_IMAGE="${{ steps.names.outputs.fee_user }}" \
                 -f containers/daq/Dockerfile .
               ;;
             artemis)
-              docker buildx build "${args[@]}" -f containers/artemis/Dockerfile .
+              run_logged final-docker-build docker buildx build "${args[@]}" -f containers/artemis/Dockerfile .
               ;;
             full)
-              docker buildx build "${args[@]}" \
+              run_logged final-docker-build docker buildx build "${args[@]}" \
                 --build-arg DAQ_DEVEL_IMAGE="${{ steps.names.outputs.daq_devel }}" \
                 --build-arg DAQ_USER_IMAGE="${{ steps.names.outputs.daq_user }}" \
                 --build-arg ARTEMIS_DEVEL_IMAGE="${{ steps.names.outputs.artemis_devel }}" \
@@ -234,6 +266,63 @@ jobs:
             --bind "${sif_workspace}:/workspace" \
             "${{ steps.names.outputs.sif }}" \
             "/opt/spadi/scripts/smoke-test-${{ matrix.family }}.sh" "${{ matrix.kind }}"
+
+      - name: Prepare short CI error tail
+        if: failure()
+        shell: bash
+        run: |
+          set -uo pipefail
+          log_dir="${RUNNER_TEMP}/spadi-ci-logs"
+          out_dir="${RUNNER_TEMP}/spadi-ci-error-tail"
+          mkdir -p "$out_dir"
+          out="$out_dir/ci-error-tail-${{ matrix.target }}.txt"
+
+          {
+            echo "target=${{ matrix.target }}"
+            echo "run_id=${GITHUB_RUN_ID}"
+            echo "commit=${GITHUB_SHA}"
+            echo
+
+            found_failed=0
+            if [[ -d "$log_dir" ]]; then
+              for status_file in "$log_dir"/*.status; do
+                [[ -e "$status_file" ]] || continue
+                status=$(cat "$status_file")
+                [[ "$status" != "0" ]] || continue
+                found_failed=1
+                name=$(basename "$status_file" .status)
+                log="$log_dir/${name}.log"
+
+                echo "===== ${name} (exit ${status}) : latest error candidates ====="
+                if [[ -f "$log" ]]; then
+                  grep -Ein 'error|fatal|failed|failure|denied|no space left|killed|segmentation fault|cmake error' "$log" \
+                    | tail -n 80 || true
+                  echo
+                  echo "===== ${name} : last 200 lines ====="
+                  tail -n 200 "$log" || true
+                else
+                  echo "Log file not found: $log"
+                fi
+                echo
+              done
+            fi
+
+            if [[ "$found_failed" == "0" ]]; then
+              echo "No failed docker-build log was recorded. The failure occurred in a later CI step."
+              echo "Inspect the failed step summary rather than downloading the complete job log."
+            fi
+          } > "$out"
+
+          wc -l "$out"
+          tail -n 20 "$out"
+
+      - name: Upload short CI error tail
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-error-tail-${{ matrix.target }}
+          path: ${{ runner.temp }}/spadi-ci-error-tail/ci-error-tail-${{ matrix.target }}.txt
+          retention-days: 14
 
       - uses: actions/upload-artifact@v4
         with:
