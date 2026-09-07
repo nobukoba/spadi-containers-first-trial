@@ -157,7 +157,7 @@ s = s.replace('find_package(ROOT REQUIRED COMPONENTS RIO RHTTP Hist)',
               'message(STATUS "ROOT support disabled in DAQ-only image")')
 s = s.replace('    TriggerView;\n', '')
 s = s.replace('set(CMAKE_CXX_FLAGS_RELEASE "-Ofast -DNDEBUG -march=native")',
-              'set(CMAKE_CXX_FLAGS_RELEASE "-Ofast -DNDEBUG -march=x86-64 -mtune=generic -mno-avx -mno-avx2")')
+              'set(CMAKE_CXX_FLAGS_RELEASE "-Ofast -DNDEBUG -march=x86-64 -mtune=generic -mno-avx -mno-avx2 -fpermissive")')
 s = s.replace('  target_include_directories(${EXEC} PUBLIC \n',
               '  target_include_directories(${EXEC} PUBLIC \n    ${CMAKE_INSTALL_PREFIX}/include;\n', 1)
 s = s.replace('#==============================================================================\n# Sampler(for Emulator), Sink, FileSink, STFBuilder, TimeFrameBuilder\n',
