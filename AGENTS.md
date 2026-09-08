@@ -65,7 +65,7 @@ Never use `-march=native` for NestDAQ, nestdaq-user-impl, or other SPADI softwar
 
 Prefer `-march=x86-64 -mtune=generic`; use explicit non-AVX flags where necessary. NestDAQ and nestdaq-user-impl currently contain upstream Release flags using `-march=native`; these must be neutralized and the resulting binaries checked for unintended AVX instructions.
 
-Current `nestdaq-user-impl` may fail against the pinned FairMQ build because `TimeFrameBuilder.cxx` passes a `const fair::mq::Parts` through an API whose `operator[]` is not const-qualified, producing `passing 'const fair::mq::Parts' as 'this' argument discards qualifiers`. For the container build, intentionally add `-fpermissive` to the patched `nestdaq-user-impl` Release flags rather than carrying a local source-level const-signature modification. Keep this workaround scoped to `nestdaq-user-impl`; do not add `-fpermissive` globally to unrelated SPADI dependencies. Re-evaluate and remove it when upstream `nestdaq-user-impl` or FairMQ resolves the const mismatch.
+Current `nestdaq-user-impl` may fail against the pinned FairMQ build because `TimeFrameBuilder.cxx` passes a `const fair::mq::Parts` through an API whose `operator[]` is not const-qualified, producing `passing 'const fair::mq::Parts' as 'this' argument discards qualifiers`. For the container build, intentionally add `-fpermissive` to the patched `nestdaq-user-impl` Release flags rather than carrying a local source-level const-signature modification. Keep this workaround scoped to `nestdaq-user-impl`; do not add `-fpermissive` globally to unrelated SPADI dependencies. Re-evaluate and remove it when upstream `nestdaq-user-impl` or FairMQ resolves the const mismatch. FULL restores the upstream `nestdaq-user-impl/CMakeLists.txt` before rebuilding with ROOT, so the FULL build must explicitly reapply this same scoped `-fpermissive` workaround after the checkout; otherwise the known const-qualification failure is reintroduced even when DAQ itself builds successfully.
 
 ## Images
 
@@ -99,6 +99,8 @@ Write Dockerfiles, helper scripts, and workflows for human readability.
 - Comment non-obvious compatibility patches and explain why they exist.
 
 Canonical component Dockerfiles are the shared build definitions. FULL and DAQ CI must reuse `containers/fee/Dockerfile`, `containers/daq/Dockerfile`, and `containers/artemis/Dockerfile` rather than duplicating their installation recipes in workflow YAML or a second FULL-only implementation.
+
+On AlmaLinux 9, the FULL development stage must enable the CRB repository before installing ARTEMIS/ROOT development packages that live there, such as `giflib-devel`. The canonical ARTEMIS build already enables CRB; when FULL reconstructs the development environment on top of the DAQ development image, do not assume the repository enablement state was inherited. Enable CRB explicitly before installing those development dependencies.
 
 ## Validation
 
