@@ -26,6 +26,10 @@ The other SIF images use the same naming scheme: `spadi-user-daq.sif`, `spadi-us
 
 ## Docker
 
+The images target `linux/amd64` with generic x86-64 compatibility.
+
+On an x86-64 Linux host:
+
 ```bash
 docker pull ghcr.io/nobukoba/spadi-containers-first-trial/spadi-user-fee:latest
 
@@ -34,7 +38,27 @@ docker run --rm -it \
   ghcr.io/nobukoba/spadi-containers-first-trial/spadi-user-fee:latest
 ```
 
-Images target `linux/amd64` with generic x86-64 compatibility.
+On an Apple Silicon Mac (`arm64`), explicitly select the x86-64 image so Docker Desktop runs it through amd64 emulation:
+
+```bash
+docker pull --platform linux/amd64 \
+  ghcr.io/nobukoba/spadi-containers-first-trial/spadi-user-fee:latest
+
+docker run --rm -it \
+  --platform linux/amd64 \
+  -v "$PWD:/workspace" \
+  ghcr.io/nobukoba/spadi-containers-first-trial/spadi-user-fee:latest
+```
+
+Without `--platform linux/amd64`, Docker on Apple Silicon reports `no matching manifest for linux/arm64/v8` because these images intentionally do not publish a native ARM64 variant.
+
+If you want `linux/amd64` to be the default for the current shell session:
+
+```bash
+export DOCKER_DEFAULT_PLATFORM=linux/amd64
+```
+
+After that, the normal `docker pull` and `docker run` commands above can be used without repeating `--platform`.
 
 ## Image Structure
 
