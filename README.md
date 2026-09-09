@@ -32,7 +32,9 @@ On an x86-64 Linux host:
 
 ```bash
 docker pull ghcr.io/nobukoba/spadi-containers-first-trial/spadi-user-fee:latest
+```
 
+```bash
 docker run --rm -it \
   -v "$PWD:/workspace" \
   ghcr.io/nobukoba/spadi-containers-first-trial/spadi-user-fee:latest
@@ -43,7 +45,9 @@ On an Apple Silicon Mac (`arm64`), explicitly select the x86-64 image so Docker 
 ```bash
 docker pull --platform linux/amd64 \
   ghcr.io/nobukoba/spadi-containers-first-trial/spadi-user-fee:latest
+```
 
+```bash
 docker run --rm -it \
   --platform linux/amd64 \
   -v "$PWD:/workspace" \
